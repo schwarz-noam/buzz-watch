@@ -20,7 +20,7 @@ library(shinythemes)
 # https://debruine.github.io/shinyintro/data.html
 
 gs4_auth(cache = ".secrets", email = "noam.schwarz@gmail.com")
-sheet_url = "https://docs.google.com/spreadsheets/d/1wEypIJtWmVy7MSXqDXqOoaqkJu7fQ7FK8EoLoje-TcU"
+sheet_url = readLines(".secrets/form_url.txt") # replace this with actual address
 thematic_shiny(font = "auto")
 
 ui <- page_navbar(
@@ -167,28 +167,26 @@ ui <- page_navbar(
   #           )
   # ),
   nav_spacer(),
-  # nav_item(
-  #   # Include GitHub button HTML
-  #   tags$head(
-  #     tags$script(src = "https://buttons.github.io/buttons.js"),
-  #     tags$link(rel = "stylesheet", href = "https://buttons.github.io/buttons.css")
-  #   ),
-  #   
-  #   
-  #   # Place the GitHub button
-  #   tags$div(
-  #     tags$a(
-  #       class = "github-button",
-  #       href = "https://github.com/schwarz-noam",
-  #       `data-color-scheme` = "no-preference: light; light: light; dark: dark;",
-  #       `data-size` = "large",
-  #       `aria-label` = "Follow @schwarz-noam on GitHub",
-  #       "Follow @schwarz-noam"
-  #     )
-  #   )
-  #   
-  #   
-  # ),
+  nav_item(
+    # Include GitHub button HTML
+    tags$head(
+      tags$script(src = "https://buttons.github.io/buttons.js"),
+      tags$link(rel = "stylesheet", href = "https://buttons.github.io/buttons.css")
+    ),
+    
+    
+    # Place the GitHub button
+    tags$div(
+      tags$a(
+        class = "github-button",
+        href = "https://github.com/schwarz-noam",
+        `data-color-scheme` = "no-preference: light; light: light; dark: dark;",
+        `data-size` = "large",
+        `aria-label` = "Follow @schwarz-noam on GitHub",
+        "Follow @schwarz-noam"
+      )
+    )
+  ),
   nav_item(input_dark_mode(id = "darkmode", mode = "dark"))
   
   
