@@ -20,7 +20,6 @@ library(shinythemes)
 # https://debruine.github.io/shinyintro/data.html
 
 gs4_auth(cache = ".secrets", email = "noam.schwarz@gmail.com")
-# sheet_url <- "https://docs.google.com/spreadsheets/d/1ZW1iHlIgQh4Z35n8KaGz4moCebWhzpX8UKEY_DODBYA"
 sheet_url = "https://docs.google.com/spreadsheets/d/1wEypIJtWmVy7MSXqDXqOoaqkJu7fQ7FK8EoLoje-TcU"
 thematic_shiny(font = "auto")
 
