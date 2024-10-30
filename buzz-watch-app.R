@@ -179,11 +179,11 @@ ui <- page_navbar(
     tags$div(
       tags$a(
         class = "github-button",
-        href = "https://github.com/schwarz-noam",
+        href = "https://github.com/schwarz-noam/buzz-watch",
         `data-color-scheme` = "no-preference: light; light: light; dark: dark;",
         `data-size` = "large",
-        `aria-label` = "Follow @schwarz-noam on GitHub",
-        "Follow @schwarz-noam"
+        `aria-label` = "View source on GitHub",
+        "View souce on GitHub"
       )
     )
   ),
