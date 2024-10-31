@@ -25,7 +25,6 @@ thematic_shiny(font = "auto")
 
 ui <- page_navbar(
   title = "BuzzWatch",
-  
   nav_panel("Dashboard", 
             # bg = "info",
             layout_columns(
@@ -107,6 +106,14 @@ ui <- page_navbar(
                             # )
                           ),
                 ),
+                nav_panel("By season", 
+                          layout_columns(
+                            plotlyOutput("seasonality"),
+                            p("This graph tracks the number of mosquitos per each hour of the day."),
+                            
+                            # )
+                          ),
+                ),
               ),
               
               
@@ -157,15 +164,6 @@ ui <- page_navbar(
             p("The dashboard is updated daily with the latest mosquito population data.")
   ),
   
-  # nav_panel("Contact",
-  #           titlePanel("Contact Us"),
-  #           p("For more information or to report issues, please contact us:"),
-  #           tags$ul(
-  #             tags$li("Email: info@mosquitotracker.com"),
-  #             tags$li("Phone: +1 (555) 123-4567"),
-  #             tags$li("Address: 123 Bug Street, Entomology City, EC 12345")
-  #           )
-  # ),
   nav_spacer(),
   nav_item(
     # Include GitHub button HTML
@@ -188,8 +186,6 @@ ui <- page_navbar(
     )
   ),
   nav_item(input_dark_mode(id = "darkmode", mode = "dark"))
-  
-  
 )
 
 
@@ -225,13 +221,31 @@ server <- function(input, output, session) {
   private_data <- reactive({
     data <- read_sheet(sheet_url)
     
+    seasons <- list(
+      spring_equinox = as_date("0001-03-20"),
+      summer_solstice = as_date("0001-06-21"),
+      autumn_equinox = as_date("0001-09-22"),
+      winter_solstice = as_date("0001-12-21")
+    )
+    
     # Process the data
     data = data %>%
       mutate(
         date = as_date(date, format = "%d/%m/%Y"),
         time = as_hms(time),
         p_longitude = longitude + rnorm(n(), mean = 0, sd = 0.005),
-        p_latitude = latitude + rnorm(n(), mean = 0, sd = 0.005)
+        p_latitude = latitude + rnorm(n(), mean = 0, sd = 0.005),
+        
+        only_dm = make_date(year = 1, month = month(date), day = day(date)),
+        season = factor(case_when(
+          only_dm < seasons$spring_equinox ~ "Winter",
+          between(only_dm, as_date("01-01-01"), seasons$spring_equinox) ~ "Winter",
+          between(only_dm, seasons$spring_equinox, seasons$summer_solstice) ~ "Spring",
+          between(only_dm, seasons$summer_solstice, seasons$autumn_equinox) ~ "Summer",
+          between(only_dm, seasons$autumn_equinox, seasons$winter_solstice) ~ "Autumn",
+          # between(only_dm, seasons$winter_solstice, as_date("31-12-01")) ~ "Winter",
+          TRUE ~ "Undefined"))
+        
       ) %>% 
       dplyr::arrange(date)
   })
@@ -307,8 +321,8 @@ server <- function(input, output, session) {
     leaflet(private_data()) %>%
       addProviderTiles(if (input$darkmode == "dark") {"Stadia.AlidadeSmoothDark"} else {"Stadia.AlidadeSmooth"}) %>%
       addAwesomeMarkers(
-        lng = ~p_latitude, 
-        lat = ~p_longitude,
+        lng = ~p_longitude, 
+        lat = ~p_latitude,
         icon = awesome_icon,  # Use the custom emoji icon
         popup = ~paste("<b>Date:</b>", format(date, "%b %Y"), "<br>",
                        "<b>Time:</b>", paste0(hour(time), ":", minute(time)), "<br>",
@@ -325,8 +339,8 @@ server <- function(input, output, session) {
           interactive = TRUE,
           delay = 500
         )) %>% 
-      setView(lng = median(private_data()$p_latitude), 
-              lat = median(private_data()$p_longitude), 
+      setView(lng = median(private_data()$p_longitude), 
+              lat = median(private_data()$p_latitude), 
               zoom = 13)
   })
   
@@ -334,13 +348,14 @@ server <- function(input, output, session) {
     
     current_colors = color_values()
     
-    fig = private_data() %>% 
+    fig = private_data() %>%
+    # data %>%
       ggplot(aes(x = date)) +
       geom_histogram(
-        # bins = ceiling(as.numeric(difftime(max(private_data()$date), min(private_data()$date), units = "weeks"))),
-        # bins = input$bins,  # Use the value from the slider
+        aes(text = paste(..count.., "Mosquitos<br>between ", format(..x.., "%d/%m/%Y"), "-", format(..xmax.., "%d/%m/%Y"))),
         binwidth = input$bins,
-        fill = current_colors$info
+        fill = current_colors$info,
+        # show.legend = F
       ) +
       labs(x = "Date",
            y = "Count") +
@@ -351,14 +366,14 @@ server <- function(input, output, session) {
             text = element_text(color = current_colors$plot_text),
             axis.line = element_line(color = current_colors$plot_text),
             axis.ticks = element_line(color = current_colors$plot_text),
-            axis.text = element_text(color = current_colors$plot_text))
+            axis.text = element_text(color = current_colors$plot_text),
+            legend.position = "none")
     
     ggplotly(fig,
-             mapping = aes(text = format(date, "%d/%m/%Y"))) %>%
-      layout(
-        hoverlabel = paste("Count: %{y}<extra></extra>") 
-      ) %>% 
-      config(displayModeBar = FALSE)
+             tooltip = "text") %>% 
+             # mapping = aes(text = format(date, "%d/%m/%Y")),
+      layout(showlegend = F) %>%
+      plotly::config(displayModeBar = FALSE)
   })
   
   output$hist_time = renderPlotly({
@@ -366,7 +381,8 @@ server <- function(input, output, session) {
     
     fig = private_data() %>% 
       ggplot(aes(x = hour(time))) +
-      geom_histogram(bins = 24,
+      geom_histogram(aes(text = paste("Count:", ..count.., "<br>Hour:", round(..x.., 0))),
+                     bins = 24,
                      fill = current_colors$info) +
       labs(x = "Time",
            y = "Count") +
@@ -381,8 +397,49 @@ server <- function(input, output, session) {
             axis.text = element_text(color = current_colors$plot_text))
     
     
-    ggplotly(fig) %>% 
-      config(displayModeBar = FALSE)
+    ggplotly(fig,
+             tooltip = c("text")) %>% 
+      
+      plotly::config(displayModeBar = FALSE)
+  })
+  
+  output$seasonality = renderPlotly({
+    current_colors = color_values()
+    
+    season_colors <- c(
+      Spring = "#FFB3BA",   # Spring (soft pink)
+      Summer = "#FFDFBA",   # Summer (light peach)
+      Autumn = "#BAE1FF",   # Autumn (light blue)
+      Winter = "#B9FBC0"    # Winter (soft green)
+    )
+    
+    outline_colors <- c(
+      Spring = "#D50032",   # Spring (bold crimson red)
+      Summer = "#FF8F00",   # Summer (vibrant orange)
+      Autumn = "#2979FF",   # Autumn (strong blue)
+      Winter = "#00BFAE"    # Winter (vivid teal)
+    )
+    
+    
+    fig = private_data() %>%
+    # data %>% 
+      ggplot(aes(x = season, fill = season, group = season, color = season)) +
+      geom_bar(aes(text = paste("Count:", ..count..))) +
+      scale_fill_manual(values = season_colors) +  # Use the defined colors
+      scale_color_manual(values = outline_colors) +  # Use the defined colors
+      theme_classic() +
+      theme(plot.background = element_rect(fill = current_colors$plot_background),
+            panel.background = element_rect(fill = current_colors$plot_background),
+            text = element_text(color = current_colors$plot_text),
+            axis.line = element_line(color = current_colors$plot_text),
+            axis.ticks = element_line(color = current_colors$plot_text),
+            axis.text = element_text(color = current_colors$plot_text))
+    
+    
+    ggplotly(fig,
+             tooltip = c("text")) %>% 
+      layout(showlegend = F) %>%
+      plotly::config(displayModeBar = FALSE)
   })
   
   
